@@ -12,6 +12,7 @@ enum Color {
     Grey,
     Brown,
     Orange,
+    LOrange
 }
 
 #[derive(Eq, PartialEq, Debug, Hash, Clone)]
@@ -125,33 +126,39 @@ impl SolvedGame {
 type Game = Vec<Bottle>;
 
 fn main() {
+    // Level 119 of sortpuz for android
     let game = Vec::from([
         Bottle {
-            contents: Vec::from([Color::DBlue, Color::DGreen, Color::Yellow, Color::Orange]),
+            contents: Vec::from([Color::LOrange, Color::Pink, Color::Pink, Color::Brown]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Pink, Color::Yellow, Color::DBlue, Color::Red]),
+            contents: Vec::from([Color::LOrange, Color::Blue, Color::Green, Color::Green]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Pink, Color::DGreen, Color::DGreen, Color::DBlue]),
+            contents: Vec::from([Color::Pink, Color::Orange, Color::Blue, Color::DBlue]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Red, Color::Orange, Color::Red, Color::Blue]),
+            contents: Vec::from([Color::Brown, Color::DBlue, Color::Brown, Color::DGreen]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Blue, Color::Pink, Color::Orange, Color::Yellow]),
+            contents: Vec::from([Color::Blue, Color::DBlue, Color::DGreen, Color::Orange]),
+            size: 4,
+        },
+
+        Bottle {
+            contents: Vec::from([Color::LOrange, Color::Green, Color::Green, Color::Orange]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::DBlue, Color::Orange, Color::Red, Color::DGreen]),
+            contents: Vec::from([Color::LOrange, Color::DGreen, Color::Blue, Color::DBlue]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Blue, Color::Blue, Color::Pink, Color::Yellow]),
+            contents: Vec::from([Color::Orange, Color::Pink, Color::DGreen, Color::Brown]),
             size: 4,
         },
         Bottle::new(4),
@@ -176,12 +183,12 @@ fn main() {
         &mut default_solved_game,
     );
 
-    //default_solved_game.path.iter().for_each(|game| {
-    //    game.iter().for_each(|bottle| {
-    //        println!("{:?}", bottle);
-    //    });
-    //    println!("");
-    //});
+    default_solved_game.path.iter().for_each(|game| {
+        game.iter().for_each(|bottle| {
+            println!("{:?}", bottle);
+        });
+        println!("");
+    });
 
     println!("Done!!!!!!");
 }
@@ -189,6 +196,8 @@ fn main() {
 static mut solved: usize = 0;
 
 fn solve(game: Game, seen: &mut HashSet<Game>, history: &mut Vec<Game>, best: &mut SolvedGame) {
+    let mut queue: Vec<Game> = Vec::new();
+
     seen.insert(game.clone());
 
     game.iter().enumerate().for_each(|(i, pourer)| {
@@ -203,69 +212,71 @@ fn solve(game: Game, seen: &mut HashSet<Game>, history: &mut Vec<Game>, best: &m
             new_game[i] = pourer;
             new_game[j] = pouree;
 
-            if ((!seen.contains(&new_game) || history.len() < best.steps.saturating_sub(1)) && new_game != game) {
-                // Need a way to not push solved games into seen games, so we can get the
-                // the same solution from a different path withouth getting stuck in a
-                // loop
-                //seen.insert(game.clone());
-
-                history.push(new_game.clone());
-
-                if history.len() > best.steps && best.steps != 0 {
-                    history.pop();
-                    return;
-                }
-
-                //new_game.iter().for_each(|bottle| {
-                //    println!("{:?}", bottle);
-                //});
-                //println!("");
-
-                // All bottles are solved (all filled with just one color)
-                if new_game.iter().fold(true, |a, b| a && b.solved()) {
-                    // All bottles are either empty or filled completely
-                    if new_game
-                        .iter()
-                        .fold(true, |a, b| a && (b.is_empty() || b.is_full()))
-                    {
-                        //    history.iter().for_each(|step| {
-                        //        step.iter().for_each(|bottle| {
-                        //            println!("{:?}", bottle);
-                        //        });
-                        //        println!("");
-                        //    });
-
-                        println!("");
-
-                        //println!("{:?}", game);
-                        unsafe {
-                            solved += 1;
-                            println!("Solved: {:?}", solved);
-                        }
-                        println!("Steps: {:?}", history.len());
-                        println!("Seen games: {:?}", seen.len());
-
-                        //std::process::exit(0);
-
-                        // Create solved game
-                        //best = &mut SolvedGame::new(Vec::from(game.clone()), history.len(), history.clone());
-                        best.solve = Vec::from(new_game.clone());
-                        best.steps = history.len();
-                        best.path = history.clone();
-
-                        history.pop();
-
-                        return;
-                    }
-                }
-
-                //seen.insert(new_game.clone());
-
-                solve(new_game.clone(), seen, history, best);
-
-                history.pop();
+            // As long as the game is changed from the original, we should keep it as a possible solution
+            // If we consider the number of steps or if we've seen the game now, we would include solutions
+            // that we shouldn't consider. This is because a previous game in the queue might affect these
+            // variables.
+            if new_game != game
+            {
+                queue.push(new_game);
             }
         });
+    });
+
+    queue.iter().for_each(|game| {
+        if seen.contains(game) {
+            return;
+        }
+
+        if history.len() >= best.steps && best.steps != 0 {
+            return;
+        }
+
+        history.push(game.clone());
+
+        //new_game.iter().for_each(|bottle| {
+        //    println!("{:?}", bottle);
+        //});
+        //println!("");
+
+        // All bottles are solved (all filled with just one color)
+        if game.iter().fold(true, |a, b| a && b.solved()) {
+            // All bottles are either empty or filled completely
+            if game
+                .iter()
+                .fold(true, |a, b| a && (b.is_empty() || b.is_full()))
+            {
+                //    history.iter().for_each(|step| {
+                //        step.iter().for_each(|bottle| {
+                //            println!("{:?}", bottle);
+                //        });
+                //        println!("");
+                //    });
+
+                println!("");
+
+                //println!("{:?}", game);
+                unsafe {
+                    solved += 1;
+                    println!("Solved: {:?}", solved);
+                }
+                println!("Steps: {:?}", history.len());
+                println!("Seen games: {:?}", seen.len());
+
+                // Update best
+                best.solve = Vec::from(game.clone());
+                best.steps = history.len();
+                best.path = history.clone();
+
+                history.pop();
+
+                return;
+            }
+        }
+
+        solve(game.clone(), seen, history, best);
+
+        history.pop();
     });
 }
 
