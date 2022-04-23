@@ -25,21 +25,21 @@ impl Bottle {
     fn new(size: usize) -> Bottle {
         Bottle {
             contents: Vec::with_capacity(size),
-            size: size,
+            size,
         }
     }
 
     fn uni_bottle(size: usize, color: Color) -> Bottle {
         Bottle {
-            contents: Vec::from(std::iter::repeat(color).take(size).collect::<Vec<Color>>()),
-            size: size,
+            contents: std::iter::repeat(color).take(size).collect::<Vec<Color>>(),
+            size,
         }
     }
 
     fn rep_bottle(size: usize, color: Color, count: usize) -> Bottle {
         Bottle {
-            contents: Vec::from(std::iter::repeat(color).take(count).collect::<Vec<Color>>()),
-            size: size,
+            contents: std::iter::repeat(color).take(count).collect::<Vec<Color>>(),
+            size,
         }
     }
 
@@ -57,21 +57,19 @@ impl Bottle {
                 }
             }
         }
-        return true;
+
+        true
     }
 
     fn is_full(&self) -> bool {
-        return self.contents.len() == self.size;
+        self.contents.len() == self.size
     }
 
     fn is_empty(&self) -> bool {
-        return self.contents.len() == 0;
+        self.contents.len() == 0
     }
 
-    fn pour(pourer: Bottle, pouree: Bottle) -> (Bottle, Bottle) {
-        let mut pourer = pourer.clone();
-        let mut pouree = pouree.clone();
-
+    fn pour(mut pourer: Bottle, mut pouree: Bottle) -> (Bottle, Bottle) {
         if pouree.size == pouree.contents.len() {
             return (pourer, pouree);
         }
@@ -81,7 +79,7 @@ impl Bottle {
             return (pourer, pouree);
         }
 
-        while pouree.contents.len() < pouree.size && pourer.contents.len() > 0 {
+        while pouree.contents.len() < pouree.size && !pourer.contents.is_empty() {
             let pourer_head = match pourer.contents.last() {
                 Some(head) => head,
                 None => break,
@@ -102,23 +100,23 @@ impl Bottle {
             }
         }
 
-        return (pourer, pouree);
+        (pourer, pouree)
     }
 }
 
 #[derive(Eq, PartialEq, Debug, Hash, Clone)]
-struct SolvedGame {
+struct BestGame {
     solve: Game,
     steps: usize,
     path: Vec<Game>,
 }
 
-impl SolvedGame {
-    fn new(solve: Game, steps: usize, path: Vec<Game>) -> SolvedGame {
-        SolvedGame {
-            solve: solve,
-            steps: steps,
-            path: path,
+impl BestGame {
+    fn new() -> BestGame {
+        BestGame {
+            solve: Vec::new(),
+            steps: 0,
+            path: Vec::new(),
         }
     }
 }
@@ -169,33 +167,31 @@ fn main() {
     game.iter().for_each(|bottle| {
         println!("{:?}", bottle);
     });
-    println!("");
-    println!("");
-    let mut default_solved_game = SolvedGame {
-        solve: Vec::new(),
-        steps: 0,
-        path: Vec::new(),
-    };
+    println!();
+    println!();
+
+    let mut best = BestGame::new();
+
     solve(
         game,
         &mut HashSet::new(),
         &mut Vec::new(),
-        &mut default_solved_game,
+        &mut best,
     );
 
-    default_solved_game.path.iter().for_each(|game| {
+    best.path.iter().for_each(|game| {
         game.iter().for_each(|bottle| {
             println!("{:?}", bottle);
         });
-        println!("");
+        println!();
     });
 
     println!("Done!!!!!!");
 }
 
-static mut solved: usize = 0;
+static mut SOLVED: usize = 0;
 
-fn solve(game: Game, seen: &mut HashSet<Game>, history: &mut Vec<Game>, best: &mut SolvedGame) {
+fn solve(game: Game, seen: &mut HashSet<Game>, path: &mut Vec<Game>, best: &mut BestGame) {
     let mut queue: Vec<Game> = Vec::new();
 
     seen.insert(game.clone());
@@ -228,55 +224,43 @@ fn solve(game: Game, seen: &mut HashSet<Game>, history: &mut Vec<Game>, best: &m
             return;
         }
 
-        if history.len() >= best.steps && best.steps != 0 {
+        if path.len() + 1 >= best.steps && best.steps != 0 {
             return;
         }
 
-        history.push(game.clone());
-
-        //new_game.iter().for_each(|bottle| {
-        //    println!("{:?}", bottle);
-        //});
-        //println!("");
+        path.push(game.clone());
 
         // All bottles are solved (all filled with just one color)
-        if game.iter().fold(true, |a, b| a && b.solved()) {
+        if game.iter().all(|b| b.solved()) {
             // All bottles are either empty or filled completely
             if game
                 .iter()
-                .fold(true, |a, b| a && (b.is_empty() || b.is_full()))
+                .all(|b| (b.is_empty() || b.is_full()))
             {
-                //    history.iter().for_each(|step| {
-                //        step.iter().for_each(|bottle| {
-                //            println!("{:?}", bottle);
-                //        });
-                //        println!("");
-                //    });
-
-                println!("");
+                println!();
 
                 //println!("{:?}", game);
                 unsafe {
-                    solved += 1;
-                    println!("Solved: {:?}", solved);
+                    SOLVED += 1;
+                    println!("Solved: {:?}", SOLVED);
                 }
-                println!("Steps: {:?}", history.len());
+                println!("Steps: {:?}", path.len());
                 println!("Seen games: {:?}", seen.len());
 
                 // Update best
-                best.solve = Vec::from(game.clone());
-                best.steps = history.len();
-                best.path = history.clone();
+                best.solve = game.clone();
+                best.steps = path.len();
+                best.path = path.clone();
 
-                history.pop();
+                path.pop();
 
                 return;
             }
         }
 
-        solve(game.clone(), seen, history, best);
+        solve(game.clone(), seen, path, best);
 
-        history.pop();
+        path.pop();
     });
 }
 
