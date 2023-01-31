@@ -1,167 +1,67 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
-#[derive(Eq, PartialEq, Debug, Clone, Hash)]
-enum Color {
-    Red,
-    Green,
-    DGreen,
-    Blue,
-    DBlue,
-    Pink,
-    Yellow,
-    Grey,
-    Brown,
-    Orange,
-    LOrange
-}
-
-#[derive(Eq, PartialEq, Debug, Hash, Clone)]
-struct Bottle {
-    contents: Vec<Color>,
-    size: usize,
-}
-
-impl Bottle {
-    fn new(size: usize) -> Bottle {
-        Bottle {
-            contents: Vec::with_capacity(size),
-            size,
-        }
-    }
-
-    fn uni_bottle(size: usize, color: Color) -> Bottle {
-        Bottle {
-            contents: std::iter::repeat(color).take(size).collect::<Vec<Color>>(),
-            size,
-        }
-    }
-
-    fn rep_bottle(size: usize, color: Color, count: usize) -> Bottle {
-        Bottle {
-            contents: std::iter::repeat(color).take(count).collect::<Vec<Color>>(),
-            size,
-        }
-    }
-
-    fn solved(&self) -> bool {
-        // If contents of bottle are all the same color, then it's solved
-        let mut seen = None;
-
-        for color in &self.contents {
-            match seen {
-                None => seen = Some(color.clone()),
-                Some(ref seen) => {
-                    if color != seen {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        true
-    }
-
-    fn is_full(&self) -> bool {
-        self.contents.len() == self.size
-    }
-
-    fn is_empty(&self) -> bool {
-        self.contents.len() == 0
-    }
-
-    fn pour(mut pourer: Bottle, mut pouree: Bottle) -> (Bottle, Bottle) {
-        if pouree.size == pouree.contents.len() {
-            return (pourer, pouree);
-        }
-
-        // A full solved bottle isn't allowed to be poured
-        if pourer.size == pourer.contents.len() && pourer.solved() {
-            return (pourer, pouree);
-        }
-
-        while pouree.contents.len() < pouree.size && !pourer.contents.is_empty() {
-            let pourer_head = match pourer.contents.last() {
-                Some(head) => head,
-                None => break,
-            };
-
-            let pouree_head = match pouree.contents.last() {
-                Some(head) => head,
-                None => {
-                    pouree.contents.push(pourer.contents.pop().unwrap());
-                    continue;
-                }
-            };
-
-            if *pouree_head == *pourer_head {
-                pouree.contents.push(pourer.contents.pop().unwrap());
-            } else {
-                break;
-            }
-        }
-
-        (pourer, pouree)
-    }
-}
-
-#[derive(Eq, PartialEq, Debug, Hash, Clone)]
-struct BestGame {
-    solve: Game,
-    steps: usize,
-    path: Vec<Game>,
-}
-
-impl BestGame {
-    fn new() -> BestGame {
-        BestGame {
-            solve: Vec::new(),
-            steps: 0,
-            path: Vec::new(),
-        }
-    }
-}
-
-type Game = Vec<Bottle>;
+use ::bottle::bottle::Bottle;
+use ::bottle::color::Color::*;
+use ::bottle::*;
 
 fn main() {
     // Level 119 of sortpuz for android
     let game = Vec::from([
         Bottle {
-            contents: Vec::from([Color::LOrange, Color::Pink, Color::Pink, Color::Brown]),
+            contents: Vec::from([LOrange, Pink, Pink, Brown]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::LOrange, Color::Blue, Color::Green, Color::Green]),
+            contents: Vec::from([LOrange, Blue, Green, Green]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Pink, Color::Orange, Color::Blue, Color::DBlue]),
+            contents: Vec::from([Pink, Orange, Blue, DBlue]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Brown, Color::DBlue, Color::Brown, Color::DGreen]),
+            contents: Vec::from([Brown, DBlue, Brown, DGreen]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Blue, Color::DBlue, Color::DGreen, Color::Orange]),
-            size: 4,
-        },
-
-        Bottle {
-            contents: Vec::from([Color::LOrange, Color::Green, Color::Green, Color::Orange]),
+            contents: Vec::from([Blue, DBlue, DGreen, Orange]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::LOrange, Color::DGreen, Color::Blue, Color::DBlue]),
+            contents: Vec::from([LOrange, Green, Green, Orange]),
             size: 4,
         },
         Bottle {
-            contents: Vec::from([Color::Orange, Color::Pink, Color::DGreen, Color::Brown]),
+            contents: Vec::from([LOrange, DGreen, Blue, DBlue]),
+            size: 4,
+        },
+        Bottle {
+            contents: Vec::from([Orange, Pink, DGreen, Brown]),
             size: 4,
         },
         Bottle::new(4),
         Bottle::new(4),
     ]);
+
+    /*
+    let game = Vec::from([
+        Bottle {
+            contents: Vec::from([Orange, Blue, Blue, Blue]),
+            size: 4,
+        },
+        Bottle {
+            contents: Vec::from([Green, Blue, Green, Green]),
+            size: 4,
+        },
+        Bottle {
+            contents: Vec::from([Orange, Orange, Orange, Green]),
+            size: 4,
+        },
+        Bottle::new(4),
+        Bottle::new(4),
+        Bottle::new(4),
+    ]);
+    */
 
     println!("Solving!!!");
     game.iter().for_each(|bottle| {
@@ -170,16 +70,9 @@ fn main() {
     println!();
     println!();
 
-    let mut best = BestGame::new();
+    let best = find_memo(&game, &mut HashMap::new()).unwrap();
 
-    solve(
-        game,
-        &mut HashSet::new(),
-        &mut Vec::new(),
-        &mut best,
-    );
-
-    best.path.iter().for_each(|game| {
+    best.iter().for_each(|game| {
         game.iter().for_each(|bottle| {
             println!("{:?}", bottle);
         });
@@ -187,165 +80,4 @@ fn main() {
     });
 
     println!("Done!!!!!!");
-}
-
-static mut SOLVED: usize = 0;
-
-fn solve(game: Game, seen: &mut HashSet<Game>, path: &mut Vec<Game>, best: &mut BestGame) {
-    let mut queue: Vec<Game> = Vec::new();
-
-    seen.insert(game.clone());
-
-    game.iter().enumerate().for_each(|(i, pourer)| {
-        game.iter().enumerate().for_each(|(j, pouree)| {
-            if i == j {
-                return;
-            }
-
-            let (pourer, pouree) = Bottle::pour(pourer.clone(), pouree.clone());
-
-            let mut new_game = game.clone();
-            new_game[i] = pourer;
-            new_game[j] = pouree;
-
-            // As long as the game is changed from the original, we should keep it as a possible solution
-            // If we consider the number of steps or if we've seen the game now, we would include solutions
-            // that we shouldn't consider. This is because a previous game in the queue might affect these
-            // variables.
-            if new_game != game
-            {
-                queue.push(new_game);
-            }
-        });
-    });
-
-    queue.iter().for_each(|game| {
-        if seen.contains(game) {
-            return;
-        }
-
-        if path.len() + 1 >= best.steps && best.steps != 0 {
-            return;
-        }
-
-        path.push(game.clone());
-
-        // All bottles are solved (all filled with just one color)
-        if game.iter().all(|b| b.solved()) {
-            // All bottles are either empty or filled completely
-            if game
-                .iter()
-                .all(|b| (b.is_empty() || b.is_full()))
-            {
-                println!();
-
-                //println!("{:?}", game);
-                unsafe {
-                    SOLVED += 1;
-                    println!("Solved: {:?}", SOLVED);
-                }
-                println!("Steps: {:?}", path.len());
-                println!("Seen games: {:?}", seen.len());
-
-                // Update best
-                best.solve = game.clone();
-                best.steps = path.len();
-                best.path = path.clone();
-
-                path.pop();
-
-                return;
-            }
-        }
-
-        solve(game.clone(), seen, path, best);
-
-        path.pop();
-    });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn pour_cant_overfill_full_bottle() {
-        let pourer = Bottle::uni_bottle(6, Color::Red);
-        let pouree = Bottle::uni_bottle(6, Color::Red);
-
-        let (pourer, pouree) = Bottle::pour(pourer, pouree);
-
-        assert_eq!(
-            (pourer, pouree),
-            (
-                Bottle::uni_bottle(6, Color::Red),
-                Bottle::uni_bottle(6, Color::Red)
-            )
-        );
-    }
-
-    #[test]
-    fn pour_transfers_all_contents_from_bottle_to_other() {
-        let pourer = Bottle::rep_bottle(6, Color::Red, 5);
-        let pouree = Bottle::new(6);
-
-        let (pourer, pouree) = Bottle::pour(pourer, pouree);
-
-        assert_eq!(
-            (pourer, pouree),
-            (Bottle::new(6), Bottle::rep_bottle(6, Color::Red, 5))
-        );
-    }
-
-    #[test]
-    fn pour_into_empty_bottle() {
-        let pourer = Bottle::rep_bottle(6, Color::Red, 3);
-        let pouree = Bottle::new(6);
-
-        let (pourer, pouree) = Bottle::pour(pourer, pouree);
-
-        assert_eq!(
-            (pourer, pouree),
-            (Bottle::new(6), Bottle::rep_bottle(6, Color::Red, 3))
-        );
-    }
-
-    #[test]
-    fn pour_only_transfers_same_colored_contents() {
-        let pourer = Bottle {
-            contents: vec![
-                Color::Red,
-                Color::Red,
-                Color::Red,
-                Color::Blue,
-                Color::Blue,
-                Color::Blue,
-            ],
-            size: 6,
-        };
-        let pouree = Bottle::new(6);
-
-        let (pourer, pouree) = Bottle::pour(pourer, pouree);
-
-        assert_eq!(
-            (pourer, pouree),
-            (
-                Bottle::rep_bottle(6, Color::Red, 3),
-                Bottle::rep_bottle(6, Color::Blue, 3)
-            )
-        );
-    }
-
-    #[test]
-    fn pour_wont_transfer_contents_of_full_bottle_of_the_same_color() {
-        let pourer = Bottle::uni_bottle(6, Color::Red);
-        let pouree = Bottle::new(6);
-
-        let (pourer, pouree) = Bottle::pour(pourer, pouree);
-
-        assert_eq!(
-            (pourer, pouree),
-            (Bottle::uni_bottle(6, Color::Red), Bottle::new(6))
-        );
-    }
 }
