@@ -2,9 +2,12 @@ use std::cmp::Ordering;
 
 use crate::color::Color;
 
+/// Represents a single bottle in a game
 #[derive(Eq, PartialEq, Debug, Hash, Clone)]
 pub struct Bottle {
+    /// The contents inside the bottle
     pub contents: Vec<Color>,
+    /// How much the bottle can hold
     pub size: usize,
 }
 
@@ -40,6 +43,7 @@ impl Ord for Bottle {
 }
 
 impl Bottle {
+    /// Returns a new empty bottle with given size
     pub fn new(size: usize) -> Bottle {
         Bottle {
             contents: Vec::with_capacity(size),
@@ -47,6 +51,7 @@ impl Bottle {
         }
     }
 
+    /// Returns a new bottle of a given size filled with just one color
     fn uni_bottle(size: usize, color: Color) -> Bottle {
         Bottle {
             contents: std::iter::repeat(color).take(size).collect::<Vec<Color>>(),
@@ -54,6 +59,7 @@ impl Bottle {
         }
     }
 
+    /// Returns a new bottle of a given size filled with a certain amount of one color
     fn rep_bottle(size: usize, color: Color, count: usize) -> Bottle {
         Bottle {
             contents: std::iter::repeat(color).take(count).collect::<Vec<Color>>(),
@@ -61,6 +67,9 @@ impl Bottle {
         }
     }
 
+    /// Wether a bottle is considered solved
+    ///
+    /// A bottle is solved if it is both full and all it's content is one single color
     pub fn is_solved(&self) -> bool {
         // If contents of bottle are all the same color, then it's solved
         let mut seen = None;
@@ -79,14 +88,27 @@ impl Bottle {
         self.is_full()
     }
 
+    /// Wether a bottle is full
     pub fn is_full(&self) -> bool {
         self.contents.len() == self.size
     }
 
+    /// Wether a bottle is empty, or has no contents
     pub fn is_empty(&self) -> bool {
         self.contents.len() == 0
     }
 
+    /// Pour takes the contents of one bottle and attempts to pour it into another bottle
+    ///
+    /// The mechanism for pouring between bottles is actually pretty complex.
+    /// These are the requirements:
+    /// - the pourer can't be empty
+    /// - the poureee can't be full
+    /// - the coloured being poured from the pourer must match the topmost color in the pouree, except if the pouree is empty
+    ///
+    /// As long as all the requirements are met the pourer will pour until the requirements are no longer met.
+    /// That is to say that after one transfer of liquid, all the requirements are still met, another transfer of liquid will happen.
+    /// This happens until the requirements are no longer met.
     pub fn pour(mut pourer: Bottle, mut pouree: Bottle) -> (Bottle, Bottle) {
         if pouree.size == pouree.contents.len() {
             return (pourer, pouree);

@@ -8,6 +8,7 @@ static mut SOLVED: usize = 0;
 
 type Game = Vec<Bottle>;
 
+/// This traits represents something that can be discerned between a is solved and is not solved state
 trait Solvable {
     fn is_solved(&self) -> bool;
 }
@@ -18,14 +19,19 @@ impl Solvable for Game {
     }
 }
 
+/// BestGame represents the best posible solution to a game
 #[derive(Eq, PartialEq, Debug, Hash, Clone)]
 pub struct BestGame {
+    /// The final solution of the game
     pub solve: Game,
+    /// How many steps are required to reach the goal
     pub steps: usize,
+    /// The path taken to reach the final solution
     pub path: Vec<Game>,
 }
 
 impl BestGame {
+    /// Returns a default BestGame
     pub fn new() -> BestGame {
         BestGame {
             solve: Vec::new(),
@@ -35,6 +41,7 @@ impl BestGame {
     }
 }
 
+/// Tries to find the best possible solution to a given name
 pub fn solve(game: &Game) -> BestGame {
     let mut best = BestGame::new();
 
